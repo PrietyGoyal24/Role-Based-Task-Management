@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
+const ActivityLog = require("../models/ActivityLog");
 
 // Register User
 const register = async (req, res) => {
@@ -27,10 +28,13 @@ const register = async (req, res) => {
       message: "User Registered Successfully",
       user,
     });
+
   } catch (error) {
+
     res.status(500).json({
       message: error.message,
     });
+
   }
 };
 
@@ -39,7 +43,7 @@ const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    // Check user exists
+    // Check User Exists
     const user = await User.findOne({ email });
 
     if (!user) {
@@ -48,14 +52,14 @@ const login = async (req, res) => {
       });
     }
 
-    // Check account status
+    // Check Account Status
     if (user.status === "inactive") {
       return res.status(403).json({
         message: "Account is inactive. Contact Admin.",
       });
     }
 
-    // Compare password
+    // Compare Password
     const isMatch = await bcrypt.compare(
       password,
       user.password
@@ -66,6 +70,12 @@ const login = async (req, res) => {
         message: "Invalid Credentials",
       });
     }
+
+    // Save Login Activity
+    await ActivityLog.create({
+      user: user._id,
+      action: "User Logged In",
+    });
 
     // Generate JWT Token
     const token = jwt.sign(
